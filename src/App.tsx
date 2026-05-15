@@ -22,7 +22,9 @@ import {
   X,
   PlusCircle,
   Save,
-  Info
+  Info,
+  Minus,
+  Maximize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Keyframe, Group, VideoEntry } from './types.ts';
@@ -63,6 +65,9 @@ export default function App() {
   });
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isTheaterMode, setIsTheaterMode] = useState(false);
+  const [videoZoom, setVideoZoom] = useState(1);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [activeLibraryId, setActiveLibraryId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
@@ -165,6 +170,18 @@ export default function App() {
   const [isAddingLibrary, setIsAddingLibrary] = useState(false);
   const [newLibName, setNewLibName] = useState('');
 
+  const SPEED_OPTIONS = [0.5, 1, 1.5, 2];
+
+  const handleCycleSpeed = () => {
+    const currentIndex = SPEED_OPTIONS.indexOf(playbackSpeed);
+    const nextIndex = (currentIndex + 1) % SPEED_OPTIONS.length;
+    const nextSpeed = SPEED_OPTIONS[nextIndex];
+    setPlaybackSpeed(nextSpeed);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = nextSpeed;
+    }
+  };
+
   const handleAddLibrary = () => {
     if (!newLibName.trim()) {
       setIsAddingLibrary(false);
@@ -231,8 +248,9 @@ export default function App() {
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-gray-200 overflow-hidden font-sans">
       {/* --- Left Sidebar: Video Library --- */}
-      <div className="w-64 border-r border-white/10 bg-[#0c0c0c] flex flex-col shadow-2xl">
-        <div className="p-8 border-b border-white/10 flex items-center justify-between bg-[#0f0f0f]">
+      {!isTheaterMode && (
+        <div className="w-64 border-r border-white/10 bg-[#0c0c0c] flex flex-col shadow-2xl">
+          <div className="p-8 border-b border-white/10 flex items-center justify-between bg-[#0f0f0f]">
           <h1 className="text-xl font-serif tracking-[0.2em] uppercase italic text-white flex items-center gap-3">
             <span className="bg-[#D4AF37] p-2 rounded transform rotate-12">
               <PlusCircle className="w-5 h-5 text-black" />
@@ -248,9 +266,10 @@ export default function App() {
               <button 
                 onClick={() => document.getElementById('file-upload')?.click()}
                 className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 transition-all py-3 rounded text-[10px] uppercase tracking-widest font-bold text-gray-300"
+                title="Support MP4, WebM, OGG, MOV, MKV"
               >
                 <FileVideo className="w-3.5 h-3.5 text-[#D4AF37]" />
-                Local
+                Video
               </button>
               <button 
                 onClick={handleAddUrl}
@@ -260,7 +279,8 @@ export default function App() {
                 URL
               </button>
             </div>
-            <input id="file-upload" type="file" accept="video/*" className="hidden" onChange={handleFileUpload} />
+            <input id="file-upload" type="file" accept="video/*,.mp4,.webm,.ogg,.mov,.mkv" className="hidden" onChange={handleFileUpload} />
+            <p className="text-[9px] text-gray-700 italic px-1">Supports MP4, WebM, OGG, MOV...</p>
           </label>
         </div>
 
@@ -326,47 +346,54 @@ export default function App() {
           ))}
         </div>
       </div>
+    )}
 
-      {/* --- Main Content: Player --- */}
+    {/* --- Main Content: Player --- */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#0a0a0a]">
         {currentVideo ? (
           <>
             {/* Header Area */}
-            <div className="px-8 py-4 flex items-center justify-between border-b border-white/10 bg-[#0f0f0f]">
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                  className="p-2 hover:bg-white/5 rounded-md transition-colors text-[#D4AF37]"
-                >
-                  <ChevronLeft className={`w-5 h-5 transition-transform ${!isSidebarOpen ? 'rotate-180' : ''}`} />
-                </button>
-                <div className="space-y-0.5">
-                  <h2 className="text-sm font-serif italic text-white truncate max-w-md">{currentVideo.title}</h2>
-                  <p className="text-[10px] text-gray-500 font-mono tracking-[0.1em] uppercase">
-                    {formatTime(currentTime)} <span className="text-[#D4AF37]/40 px-1">/</span> {formatTime(duration)}
-                  </p>
+            {!isTheaterMode && (
+              <div className="px-8 py-4 flex items-center justify-between border-b border-white/10 bg-[#0f0f0f]">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="p-2 hover:bg-white/5 rounded-md transition-colors text-[#D4AF37]"
+                  >
+                    <ChevronLeft className={`w-5 h-5 transition-transform ${!isSidebarOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  <div className="space-y-0.5">
+                    <h2 className="text-sm font-serif italic text-white truncate max-w-md">{currentVideo.title}</h2>
+                    <p className="text-[10px] text-gray-500 font-mono tracking-[0.1em] uppercase">
+                      {formatTime(currentTime)} <span className="text-[#D4AF37]/40 px-1">/</span> {formatTime(duration)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={handleAddKeyframe}
+                    className="flex items-center gap-2 px-5 py-2 bg-white text-black hover:bg-[#D4AF37] rounded font-bold text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Mark Moment
+                  </button>
+                  <button 
+                    onClick={() => setVideoToDeleteId(currentVideo.id)}
+                    className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={handleAddKeyframe}
-                  className="flex items-center gap-2 px-5 py-2 bg-white text-black hover:bg-[#D4AF37] rounded font-bold text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                  Mark Moment
-                </button>
-                <button 
-                  onClick={() => setVideoToDeleteId(currentVideo.id)}
-                  className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+            )}
 
             {/* Video Canvas */}
-            <div className="flex-1 relative group flex items-center justify-center p-12 bg-[#050505]">
-              <div className="relative w-full max-w-5xl aspect-video bg-black rounded-xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/5">
+            <div className={`flex-1 relative group flex items-center justify-center ${isTheaterMode ? 'p-2 md:p-4' : 'p-6 md:p-10'} bg-[#050505] transition-all duration-500 overflow-hidden`}>
+              <div 
+                className={`relative w-full transition-all duration-500 bg-black rounded-xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/5 ${
+                  isTheaterMode ? 'max-w-full h-full' : 'max-w-[1400px] aspect-video'
+                }`}
+              >
                 {videoError ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-[#0a0a0a] z-50">
                     <Info className="w-12 h-12 text-[#D4AF37] mb-4 opacity-20" />
@@ -398,60 +425,133 @@ export default function App() {
                     />
                   </div>
                 ) : (
-                  <video
-                    ref={videoRef}
-                    src={currentVideo.url}
-                    className="w-full h-full object-contain"
-                    onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-                    onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onError={() => {
-                      if (currentVideo.type === 'file') {
-                        setVideoError('Browser session for this local file has expired. Please re-select the file from your computer.');
-                      } else {
-                        setVideoError('The remote video source could not be reached or is in an unsupported format.');
-                      }
-                    }}
-                    onClick={() => isPlaying ? videoRef.current?.pause() : videoRef.current?.play()}
-                  />
+                  <div className="w-full h-full relative cursor-crosshair overflow-hidden">
+                    <video
+                      ref={videoRef}
+                      src={currentVideo.url}
+                      style={{ transform: `scale(${videoZoom})`, transformOrigin: 'center' }}
+                      className="w-full h-full object-contain transition-transform duration-300"
+                      onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                      onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      onError={() => {
+                        if (currentVideo.type === 'file') {
+                          setVideoError('Browser session for this local file has expired. Please re-select the file from your computer.');
+                        } else {
+                          setVideoError('The remote video source could not be reached or is in an unsupported format.');
+                        }
+                      }}
+                      onClick={() => isPlaying ? videoRef.current?.pause() : videoRef.current?.play()}
+                    />
+                    
+                    {/* Zoom Indicator */}
+                    {videoZoom > 1 && (
+                      <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest z-20">
+                        Zoom: {videoZoom.toFixed(1)}x
+                      </div>
+                    )}
+                  </div>
                 )}
                 
                 {/* Custom Overlay Controls */}
-                <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-5">
-                  <div className="relative group/progress h-1 w-full bg-white/10 rounded-full cursor-pointer">
-                    <div 
-                      className="absolute inset-0 bg-[#D4AF37]/20 rounded-full" 
-                      style={{ width: `${(currentTime / duration) * 100}%` }} 
-                    />
-                    <div 
-                      className="absolute inset-y-0 left-0 bg-[#D4AF37] rounded-full flex items-center justify-end" 
-                      style={{ width: `${(currentTime / duration) * 100}%` }}
-                    >
-                      <div className="w-3 h-3 bg-white rounded-full shadow-[0_0_10px_#D4AF37] scale-0 group-hover/progress:scale-100 transition-transform translate-x-1/2" />
+                <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-5 z-30">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
+                      <button 
+                        onClick={() => {
+                          const v = videoRef.current;
+                          if (v) v.currentTime -= 5;
+                        }}
+                        className="text-gray-400 hover:text-white transition-colors"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => isPlaying ? videoRef.current?.pause() : videoRef.current?.play()}
+                        className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center hover:bg-[#D4AF37] transition-all hover:scale-110 shadow-xl"
+                      >
+                        {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          const v = videoRef.current;
+                          if (v) v.currentTime += 5;
+                        }}
+                        className="text-gray-400 hover:text-white transition-colors"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
                     </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max={duration || 100} 
-                      value={currentTime} 
-                      onChange={(e) => {
-                        const time = parseFloat(e.target.value);
-                        if (videoRef.current) videoRef.current.currentTime = time;
-                      }}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full"
-                    />
-                  </div>
 
-                  <div className="flex items-center gap-8">
-                    <button 
-                      onClick={() => isPlaying ? videoRef.current?.pause() : videoRef.current?.play()}
-                      className="hover:scale-110 transition-transform text-white"
-                    >
-                      {isPlaying ? <Pause className="w-8 h-8 fill-white" /> : <Play className="w-8 h-8 fill-white ml-0.5" />}
-                    </button>
-                    <div className="text-xs font-mono tracking-widest text-[#D4AF37]">
-                      {formatTime(currentTime)} <span className="opacity-30 px-1">/</span> {formatTime(duration)}
+                    <div className="flex-1 group/progress relative py-3 cursor-pointer" onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const pos = (e.clientX - rect.left) / rect.width;
+                      if (videoRef.current) videoRef.current.currentTime = pos * duration;
+                    }}>
+                      <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-[#D4AF37] to-yellow-200 transition-all duration-100" 
+                          style={{ width: `${(currentTime / duration) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-[10px] font-mono font-bold text-gray-400 tracking-tighter">
+                        <span className="text-white">{formatTime(currentTime)}</span>
+                        <span className="mx-1.5 opacity-30">/</span>
+                        <span>{formatTime(duration)}</span>
+                      </div>
+                      
+                      <div className="flex items-center bg-black/40 backdrop-blur-sm rounded-lg border border-white/5 p-1 gap-1">
+                        <button 
+                          onClick={handleCycleSpeed}
+                          className="px-2.5 py-1.5 hover:bg-white/10 rounded-md text-[10px] font-bold text-white transition-all flex items-center gap-1.5 min-w-[54px] justify-center"
+                          title="Playback Speed"
+                        >
+                          <span className="text-[#D4AF37]">{playbackSpeed}x</span>
+                        </button>
+                        <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
+                        <button 
+                          onClick={() => setVideoZoom(prev => Math.max(1, prev - 0.5))}
+                          className="p-1.5 hover:bg-white/10 rounded-md text-gray-400 hover:text-white transition-colors"
+                          title="Zoom Out"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => setVideoZoom(1)}
+                          className="px-2 text-[9px] font-bold uppercase text-[#D4AF37] hover:text-white transition-colors"
+                        >
+                          1:1
+                        </button>
+                        <button 
+                          onClick={() => setVideoZoom(prev => Math.min(4, prev + 0.5))}
+                          className="p-1.5 hover:bg-white/10 rounded-md text-gray-400 hover:text-white transition-colors"
+                          title="Zoom In"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={() => setIsTheaterMode(!isTheaterMode)}
+                        className={`p-2 rounded-md transition-all ${isTheaterMode ? 'bg-[#D4AF37] text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        title={isTheaterMode ? 'Normal View' : 'Theater View'}
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                      </button>
+                      
+                      {isTheaterMode && (
+                        <button 
+                          onClick={handleAddKeyframe}
+                          className="flex items-center gap-2 px-3 py-2 bg-[#D4AF37] text-black rounded font-bold text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 ml-2"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Mark
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -473,7 +573,7 @@ export default function App() {
 
       {/* --- Right Sidebar: Libraries & Keyframes --- */}
       <AnimatePresence>
-        {isSidebarOpen && (
+        {isSidebarOpen && !isTheaterMode && (
           <motion.div 
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 340, opacity: 1 }}
